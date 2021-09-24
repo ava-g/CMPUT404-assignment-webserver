@@ -52,11 +52,14 @@ class MyWebServer(socketserver.BaseRequestHandler):
         response = ''
         if "GET" in data_dict:
             path = "www" + data_dict['GET']
+            if os.path.isdir(path) and path[-1] != "/":
+                # append ending "/" sign
+                path += "/"
             if len(path) >= 1 and path[-1] == "/":
                 path += "index.html"
             
             # search url in folder
-            if os.path.exists(path):
+            if "../" not in path and os.path.exists(path):
                 # file found - open file
                 file = open(path, mode = 'r')
                 response = "HTTP/1.1 200 OK\r\n"  # response header
