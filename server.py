@@ -1,6 +1,7 @@
 #  coding: utf-8 
 import socketserver
 import os
+import os.path
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -27,74 +28,8 @@ import os
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
-
-# global dictionary to store served file contents
-files = {}
-files["base.css"] = \
-'''
-h1 {
-    color:orange;
-    text-align:center;
-}
-'''
-files["index.html"] = \
-'''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Example Page</title>
-        <meta http-equiv="Content-Type"
-        content="text/html;charset=utf-8"/>
-        <!-- check conformance at http://validator.w3.org/check -->
-        <link rel="stylesheet" type="text/css" href="base.css">
-</head>
-
-<body>
-    <div class="eg">
-        <h1>An Example Page</h1>
-        <ul>
-            <li>It works?
-                        <li><a href="deep/index.html">A deeper page</a></li>
-        </ul>
-    </div>
-</body>
-</html> 
-'''
-files["deep/deep.css"] = \
-'''
-h1 {
-    color:green;
-    text-align:center;
-}
-'''
-files["deep/index.html"] = \
-'''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Deeper Example Page</title>
-        <meta http-equiv="Content-Type"
-        content="text/html;charset=utf-8"/>
-        <!-- check conformance at http://validator.w3.org/check -->
-        <link rel="stylesheet" type="text/css" href="deep.css">
-</head>
-
-<body>
-    <div class="eg">
-        <h1>An Example of a Deeper Page</h1>
-        <ul>
-            <li>It works?</li>
-                        <li><a href="../index.html">A page below!</a></li>
-        </ul>
-    </div>
-</body>
-</html>
-'''
 class MyWebServer(socketserver.BaseRequestHandler):
-    '''def __init__(self, request, client_address, server):
-        self.base = os.path.realpath("./www")
-        super().__init__(request, client_address, server)
-    '''
+    
     def handle(self):
         self.data = self.request.recv(1024).strip()
         #print("type(self.data): ", type(self.data))
@@ -106,27 +41,30 @@ class MyWebServer(socketserver.BaseRequestHandler):
         data_dict = {}  # extract info from data string
         for component in components:
             if component.find(": ") == -1:  # extract request type
-                sub_components = component.split(" /")
+                sub_components = component.split(" ")
                 if len(sub_components) < 2:
                     continue
-                data_dict[sub_components[0]] = sub_components[1].split(" ")
+                data_dict[sub_components[0]] = sub_components[1]
             else:
                 sub_components = component.split(": ")
                 data_dict[sub_components[0]] = sub_components[1]
         
         response = ''
         if "GET" in data_dict:
-            path = data_dict['GET'][0]
-            if path == "":
+            path = "www" + data_dict['GET']
+            if len(path) >= 1 and path[-1] == "/":
                 path += "index.html"
             
-            # if url is in served files
-            if path in files:
+            # search url in folder
+            if os.path.exists(path):
+                # file found - open file
+                file = open(path, mode = 'r')
                 response = "HTTP/1.1 200 OK\r\n"  # response header
-                file_type = path.split(".")[-1]        
+                file_type = path.split(".")[1]        
                 response += "Content-type: text/" + file_type + "\r\n"
                 response += "\r\n"
-                response += files[path]  # response body
+                response += file.read()  # response body
+                file.close()
             else:
                 response = "HTTP/1.1 404 Not Found\r\n"  # response header
         else:
@@ -134,7 +72,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             response = "HTTP/1.1 405 Method Not Allowed\r\n"  # header
         
         self.request.sendall(bytearray(response,'utf-8'))  # send http response
-        print("Response sent.")    
+        print("Response sent.")   
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
