@@ -69,6 +69,12 @@ class MyWebServer(socketserver.BaseRequestHandler):
             if os.path.isdir(path) and path[-1] != "/":
                 # append ending "/" sign
                 path += "/"
+                response = "HTTP/1.1 301 Moved Permanently\r\n"  # response header
+                response += "Location: " + HOST + ":" + str(PORT) + path + "\r\n"  # redirect
+                response += "Connection: " + data_dict["Connection"] + "\r\n"
+                response += "\r\n"
+                self.request.sendall(bytearray(response,'utf-8'))  # send http response
+                return
             if len(path) >= 1 and path[-1] == "/":
                 path += "index.html"
             
@@ -77,8 +83,9 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 # file found - open file
                 file = open(path, mode = 'r')
                 response = "HTTP/1.1 200 OK\r\n"  # response header
-                file_type = path.split(".")[1]        
+                file_type = path.split(".")[1]
                 response += "Content-type: text/" + file_type + "\r\n"
+                response += "Connection: " + data_dict["Connection"] + "\r\n"
                 response += "\r\n"
                 response += file.read()  # response body
                 file.close()
@@ -89,7 +96,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
             response = "HTTP/1.1 405 Method Not Allowed\r\n"  # header
         
         self.request.sendall(bytearray(response,'utf-8'))  # send http response
-        print("Response sent.")   
+        print("Response sent.")
+        return   
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
